@@ -19,6 +19,25 @@ impl From<(Vec<char>, Vec<char>)> for Rucksack {
     }
 }
 
+/// Requires sorted Rucksacks
+pub fn find_duplication(rs: &Rucksack) -> Option<char> {
+    let l = &rs.left;
+    let r = &rs.right;
+    assert_eq!(l.len(), r.len());
+    let mut i_l = 0;
+    let mut i_r = 0;
+    let len = l.len();
+
+    while i_l < len && i_r < len {
+        match l[i_l].cmp(&r[i_r]) {
+            std::cmp::Ordering::Less => i_l += 1,
+            std::cmp::Ordering::Equal => return Some(l[i_l]),
+            std::cmp::Ordering::Greater => i_r += 1,
+        }
+    }
+    None
+}
+
 pub fn load_data(file: &str) -> Result<Rucksacks> {
     let file = File::open(file)?;
     let reader = BufReader::new(file);
@@ -46,6 +65,9 @@ mod tests {
     #[test]
     fn example_data() {
         let rucksacks = load_data("example.txt").unwrap();
-        println!("RS => {:#?}", rucksacks);
+        rucksacks.iter().for_each(|rs| {
+            let d = find_duplication(rs).unwrap();
+            println!("duplication: {}", d);
+        })
     }
 }
