@@ -8,7 +8,7 @@ pub struct Rucksack {
     left: Vec<char>,
     right: Vec<char>,
 }
-type Rucksacks = Vec<Rucksack>;
+struct Rucksacks(Vec<Rucksack>);
 
 impl From<(Vec<char>, Vec<char>)> for Rucksack {
     fn from(c: (Vec<char>, Vec<char>)) -> Self {
@@ -19,43 +19,62 @@ impl From<(Vec<char>, Vec<char>)> for Rucksack {
     }
 }
 
-/// Requires sorted Rucksacks
-pub fn find_duplication(rs: &Rucksack) -> Option<char> {
-    let l = &rs.left;
-    let r = &rs.right;
-    assert_eq!(l.len(), r.len());
-    let mut i_l = 0;
-    let mut i_r = 0;
-    let len = l.len();
+impl Rucksack {
+    pub fn find_duplication(&self) -> Option<char> {
+        assert_eq!(self.left.len(), self.right.len());
+        let mut i_l = 0;
+        let mut i_r = 0;
+        let len = self.left.len();
 
-    while i_l < len && i_r < len {
-        match l[i_l].cmp(&r[i_r]) {
-            std::cmp::Ordering::Less => i_l += 1,
-            std::cmp::Ordering::Equal => return Some(l[i_l]),
-            std::cmp::Ordering::Greater => i_r += 1,
+        while i_l < len && i_r < len {
+            match self.left[i_l].cmp(&self.right[i_r]) {
+                std::cmp::Ordering::Less => i_l += 1,
+                std::cmp::Ordering::Equal => return Some(self.left[i_l]),
+                std::cmp::Ordering::Greater => i_r += 1,
+            }
         }
+        None
     }
-    None
 }
 
-pub fn load_data(file: &str) -> Result<Rucksacks> {
-    let file = File::open(file)?;
-    let reader = BufReader::new(file);
-    let rucksacks: Rucksacks = reader
-        .lines()
-        .filter_map(|l| l.ok())
-        .map(|mut l| {
-            let r = l.split_off(l.len() / 2);
+impl Rucksacks {
+    pub fn new(file: &str) -> Result<Self> {
+        let file = File::open(file)?;
+        let reader = BufReader::new(file);
+        let rucksacks: Vec<Rucksack> = reader
+            .lines()
+            .filter_map(|l| l.ok())
+            .map(|mut l| {
+                let r = l.split_off(l.len() / 2);
 
-            let mut l: Vec<_> = l.chars().collect();
-            let mut r: Vec<_> = r.chars().collect();
-            r.sort();
-            l.sort();
+                let mut l: Vec<_> = l.chars().collect();
+                let mut r: Vec<_> = r.chars().collect();
+                r.sort();
+                l.sort();
 
-            (l, r).into()
-        })
-        .collect();
-    Ok(rucksacks)
+                (l, r).into()
+            })
+            .collect();
+        Ok(Self(rucksacks))
+    }
+
+    // First solution
+    pub fn calc_prio(&self) -> u32 {
+        let uppercase_a = 'A' as u32 - 1;
+        let lowercase_a = 'a' as u32 - 1;
+
+        self.0
+            .iter()
+            .filter_map(|rs| rs.find_duplication())
+            .map(|c| {
+                if c >= 'a' {
+                    c as u32 - lowercase_a
+                } else {
+                    c as u32 - uppercase_a + 26
+                }
+            })
+            .sum()
+    }
 }
 
 #[cfg(test)]
@@ -64,10 +83,7 @@ mod tests {
 
     #[test]
     fn example_data() {
-        let rucksacks = load_data("example.txt").unwrap();
-        rucksacks.iter().for_each(|rs| {
-            let d = find_duplication(rs).unwrap();
-            println!("duplication: {}", d);
-        })
+        let rs = Rucksacks::new("example.txt").unwrap();
+        assert_eq!(rs.calc_prio(), 157);
     }
 }
