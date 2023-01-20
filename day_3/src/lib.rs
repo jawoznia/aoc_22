@@ -8,7 +8,7 @@ pub struct Rucksack {
     left: Vec<char>,
     right: Vec<char>,
 }
-struct Rucksacks(Vec<Rucksack>);
+pub struct Rucksacks(Vec<Rucksack>);
 
 impl From<(Vec<char>, Vec<char>)> for Rucksack {
     fn from(c: (Vec<char>, Vec<char>)) -> Self {
@@ -85,5 +85,11 @@ mod tests {
     fn example_data() {
         let rs = Rucksacks::new("example.txt").unwrap();
         assert_eq!(rs.calc_prio(), 157);
+    }
+
+    #[test]
+    fn first() {
+        let rs = Rucksacks::new("first.txt").unwrap();
+        assert_eq!(rs.calc_prio(), 7903);
     }
 }
