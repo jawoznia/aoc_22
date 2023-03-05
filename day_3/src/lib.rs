@@ -1,8 +1,9 @@
+pub mod second;
+
 use anyhow::Result;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Rucksack {
     left: Vec<char>,
