@@ -19,16 +19,27 @@ impl FromIterator<char> for Rucksack {
     }
 }
 
-pub fn find_duplication(v: &(&Vec<char>, &Vec<char>, &Vec<char>)) -> Option<char> {
-    // while i_l < len && i_r < len {
-    //     match self.left[i_l].cmp(&self.right[i_r]) {
-    //         std::cmp::Ordering::Less => i_l += 1,
-    //         std::cmp::Ordering::Equal => return Some(self.left[i_l]),
-    //         std::cmp::Ordering::Greater => i_r += 1,
-    //     }
-    // }
+pub fn find_duplication(l: Vec<char>, r: Vec<char>) -> Vec<char> {
+    let l_len = l.len();
+    let r_len = r.len();
+    let mut i_l = 0;
+    let mut i_r = 0;
 
-    None
+    let mut duplications = vec![];
+
+    while i_l < l_len && i_r < r_len {
+        match l[i_l].cmp(&r[i_r]) {
+            std::cmp::Ordering::Less => i_l += 1,
+            std::cmp::Ordering::Equal => {
+                duplications.push(l[i_l]);
+                i_l += 1;
+                i_r += 1;
+            }
+            std::cmp::Ordering::Greater => i_r += 1,
+        }
+    }
+
+    duplications
 }
 
 impl Rucksacks {
@@ -60,23 +71,27 @@ impl Rucksacks {
         Ok(Self(rucksacks))
     }
 
-    // First solution
-    pub fn calc_prio(&self) -> u32 {
+    pub fn calc_prio(self) -> u32 {
         let uppercase_a = 'A' as u32 - 1;
         let lowercase_a = 'a' as u32 - 1;
 
-        0
-        // self.0
-        //     .iter()
-        //     .filter_map(|rs| rs.find_duplication())
-        //     .map(|c| {
-        //         if c >= 'a' {
-        //             c as u32 - lowercase_a
-        //         } else {
-        //             c as u32 - uppercase_a + 26
-        //         }
-        //     })
-        //     .sum()
+        let rucksacks = self.0;
+
+        rucksacks
+            .into_iter()
+            .map(|(a, b, c)| {
+                let duplicated = find_duplication(a.0, b.0);
+                let c = find_duplication(duplicated, c.0);
+                assert!(!c.is_empty());
+                let c = c[0];
+
+                if c >= 'a' {
+                    c as u32 - lowercase_a
+                } else {
+                    c as u32 - uppercase_a + 26
+                }
+            })
+            .sum()
     }
 }
 
@@ -87,13 +102,11 @@ mod tests {
     #[test]
     fn example() {
         let rs = Rucksacks::new("example.txt").unwrap();
-        rs.0.iter().for_each(|r| println!("Rucksack: {:#?}", r));
         assert_eq!(rs.calc_prio(), 70);
     }
     #[test]
     fn first() {
         let rs = Rucksacks::new("first.txt").unwrap();
-        rs.0.iter().for_each(|r| println!("Rucksack: {:#?}", r));
-        assert_eq!(rs.calc_prio(), 7903);
+        assert_eq!(rs.calc_prio(), 2548);
     }
 }
