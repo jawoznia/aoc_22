@@ -10,6 +10,13 @@ pub struct SectionPair {
     pub right: (u32, u32),
 }
 
+impl SectionPair {
+    pub fn overlaps(&self) -> bool {
+        let SectionPair { left, right } = self;
+        left.1 <= right.0 && right.1 <= left.0
+    }
+}
+
 pub fn load_data(file: &str) -> Result<Vec<SectionPair>> {
     let file = File::open(file)?;
     let reader = BufReader::new(file);
