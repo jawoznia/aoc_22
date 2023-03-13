@@ -18,6 +18,12 @@ impl SectionPair {
         let SectionPair { left, right } = self;
         left.0 <= right.0 && right.1 <= left.1 || left.0 >= right.0 && right.1 >= left.1
     }
+
+    /// Checks if pairs overlap
+    pub fn overlaps(&self) -> bool {
+        let SectionPair { left, right } = self;
+        left.0 <= right.1 && right.0 <= left.1
+    }
 }
 
 impl FromIterator<SectionPair> for Sections {
@@ -29,6 +35,10 @@ impl FromIterator<SectionPair> for Sections {
 impl Sections {
     pub fn count_intersections(&self) -> usize {
         self.0.iter().filter(|s| s.contains()).count()
+    }
+
+    pub fn count_overlaps(&self) -> usize {
+        self.0.iter().filter(|s| s.overlaps()).count()
     }
 }
 
@@ -62,7 +72,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn example() {
+    fn example_1() {
         let sections = load_data("example.txt").unwrap();
         assert_eq!(sections.count_intersections(), 2)
     }
@@ -71,5 +81,17 @@ mod tests {
     fn test_1() {
         let sections = load_data("test_1.txt").unwrap();
         assert_eq!(sections.count_intersections(), 459)
+    }
+
+    #[test]
+    fn example_2() {
+        let sections = load_data("example.txt").unwrap();
+        assert_eq!(sections.count_overlaps(), 4)
+    }
+
+    #[test]
+    fn test_2() {
+        let sections = load_data("test_1.txt").unwrap();
+        assert_eq!(sections.count_overlaps(), 779)
     }
 }
