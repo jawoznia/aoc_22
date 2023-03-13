@@ -10,17 +10,32 @@ pub struct SectionPair {
     pub right: (u32, u32),
 }
 
+pub struct Sections(Vec<SectionPair>);
+
 impl SectionPair {
-    pub fn overlaps(&self) -> bool {
+    /// Checks if one of the sections contains the other one
+    pub fn contains(&self) -> bool {
         let SectionPair { left, right } = self;
-        left.1 <= right.0 && right.1 <= left.0
+        left.0 <= right.0 && right.1 <= left.1 || left.0 >= right.0 && right.1 >= left.1
     }
 }
 
-pub fn load_data(file: &str) -> Result<Vec<SectionPair>> {
+impl FromIterator<SectionPair> for Sections {
+    fn from_iter<T: IntoIterator<Item = SectionPair>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
+impl Sections {
+    pub fn count_intersections(&self) -> usize {
+        self.0.iter().filter(|s| s.contains()).count()
+    }
+}
+
+pub fn load_data(file: &str) -> Result<Sections> {
     let file = File::open(file)?;
     let reader = BufReader::new(file);
-    let pair: Vec<_> = reader
+    let pair: Sections = reader
         .lines()
         .filter_map(|l| l.ok())
         .map(|l| -> Result<_> {
@@ -48,6 +63,13 @@ mod tests {
 
     #[test]
     fn example() {
-        let _sections = load_data("example.txt").unwrap();
+        let sections = load_data("example.txt").unwrap();
+        assert_eq!(sections.count_intersections(), 2)
+    }
+
+    #[test]
+    fn test_1() {
+        let sections = load_data("test_1.txt").unwrap();
+        assert_eq!(sections.count_intersections(), 459)
     }
 }
