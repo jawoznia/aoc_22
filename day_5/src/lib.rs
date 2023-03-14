@@ -43,14 +43,39 @@ impl Storage {
                 })
         });
 
+        // TODO: Rewrite it so that for_each will become map forwarding parse error in case of
+        // failure
         lines.iter().filter(|l| l.contains('m')).for_each(|l| {
             let Some((count, from, to)) = l.split(' ').skip(1).step_by(2).map(|s| s.parse::<u32>()).filter_map(|s| s.ok()).collect_tuple() else {
                 panic!("Unexpected format of move commands: {}", l);
             };
-            storage.moves.push(Move { count, from, to })
+
+            // Subtract one from 'from' and 'to' to match index of Vecs
+            storage.moves.push(Move { count, from: from -1 , to : to -1 })
         });
 
         Ok(storage)
+    }
+
+    pub fn move_crates(&mut self) {
+        let Self { stacks, moves } = self;
+
+        moves.iter().for_each(|m| {
+            let Move { count, from, to } = m;
+            for _ in 0..*count {
+                let Some(poped) = stacks[*from as usize].pop_back() else {
+                    panic!("{:#?} would cause move from empty stack", m);
+                };
+                stacks[*to as usize].push_back(poped);
+            }
+        });
+    }
+
+    pub fn top_of_stacks(&self) -> String {
+        self.stacks
+            .iter()
+            .map(|stack| stack.back().unwrap_or(&'-'))
+            .collect()
     }
 }
 
@@ -59,7 +84,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        Storage::new("example.txt").unwrap();
+    fn example() {
+        let mut storage = Storage::new("example.txt").unwrap();
+        storage.move_crates();
+        assert_eq!("CMZ".to_owned(), storage.top_of_stacks());
+    }
+
+    #[test]
+    fn first() {
+        let mut storage = Storage::new("first.txt").unwrap();
+        storage.move_crates();
+        assert_eq!("WHTLRMZRC".to_owned(), storage.top_of_stacks());
     }
 }
