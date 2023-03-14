@@ -57,7 +57,7 @@ impl Storage {
         Ok(storage)
     }
 
-    pub fn move_crates(&mut self) {
+    pub fn move_crates_9000(&mut self) {
         let Self { stacks, moves } = self;
 
         moves.iter().for_each(|m| {
@@ -67,6 +67,19 @@ impl Storage {
                     panic!("{:#?} would cause move from empty stack", m);
                 };
                 stacks[*to as usize].push_back(poped);
+            }
+        });
+    }
+
+    pub fn move_crates_9001(&mut self) {
+        let Self { stacks, moves } = self;
+
+        moves.iter().for_each(|m| {
+            let Move { count, from, to } = m;
+            let split_index = stacks[*from as usize].len() - *count as usize;
+            for _ in 0..*count {
+                let mut moved_crates = stacks[*from as usize].split_off(split_index);
+                stacks[*to as usize].append(&mut moved_crates);
             }
         });
     }
@@ -84,16 +97,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn example() {
+    fn example_9000() {
         let mut storage = Storage::new("example.txt").unwrap();
-        storage.move_crates();
+        storage.move_crates_9000();
         assert_eq!("CMZ".to_owned(), storage.top_of_stacks());
     }
 
     #[test]
-    fn first() {
+    fn test_9000() {
         let mut storage = Storage::new("first.txt").unwrap();
-        storage.move_crates();
+        storage.move_crates_9000();
         assert_eq!("WHTLRMZRC".to_owned(), storage.top_of_stacks());
+    }
+
+    #[test]
+    fn example_9001() {
+        let mut storage = Storage::new("example.txt").unwrap();
+        storage.move_crates_9001();
+        assert_eq!("MCD".to_owned(), storage.top_of_stacks());
+    }
+
+    #[test]
+    fn test_9001() {
+        let mut storage = Storage::new("first.txt").unwrap();
+        storage.move_crates_9001();
+        assert_eq!("GMPMLWNMG".to_owned(), storage.top_of_stacks());
     }
 }
