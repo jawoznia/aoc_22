@@ -23,18 +23,14 @@ impl Detectors {
         let detectors: Self = reader
             .lines()
             .filter_map(|l| l.ok())
-            .map(|l| Detector(l))
+            .map(Detector)
             .collect();
 
         Ok(detectors)
     }
 
     pub fn find_markers(&self) -> Vec<usize> {
-        self.0
-            .iter()
-            .map(|mf| mf.find_marker())
-            .filter_map(|marker| marker)
-            .collect()
+        self.0.iter().filter_map(|mf| mf.find_marker()).collect()
     }
 }
 
