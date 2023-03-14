@@ -3,7 +3,9 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 use anyhow::Result;
+use itertools::Itertools;
 
+#[derive(Debug)]
 pub struct Move {
     pub count: u32,
     pub from: u32,
@@ -11,7 +13,10 @@ pub struct Move {
 }
 
 #[derive(Debug)]
-pub struct Storage(Vec<VecDeque<char>>);
+pub struct Storage {
+    pub stacks: Vec<VecDeque<char>>,
+    pub moves: Vec<Move>,
+}
 
 impl Storage {
     pub fn new(file: &str) -> Result<Self> {
@@ -22,24 +27,30 @@ impl Storage {
             .filter_map(|l| l.ok())
             .collect::<Vec<String>>();
         let no_stacks = lines[0].len() / 4 + 1;
-        let mut storage = Self(vec![VecDeque::new(); no_stacks]);
+        let mut storage = Self {
+            stacks: vec![VecDeque::new(); no_stacks],
+            moves: vec![],
+        };
 
         lines.iter().filter(|l| l.contains('[')).for_each(|l| {
             l.chars()
                 .skip(1)
                 .step_by(4)
-                .zip(storage.0.iter_mut())
+                .zip(storage.stacks.iter_mut())
+                .filter(|(letter, _)| letter != &' ')
                 .for_each(|(letter, stack)| {
-                    if letter != ' ' {
-                        stack.push_front(letter);
-                    }
+                    stack.push_front(letter);
                 })
         });
 
-        println!("storage: {:#?}", storage);
-        println!("no_stacks = {}", no_stacks);
-        // Ok(Self(rucksacks))
-        Ok(Self(vec![]))
+        lines.iter().filter(|l| l.contains('m')).for_each(|l| {
+            let Some((count, from, to)) = l.split(' ').skip(1).step_by(2).map(|s| s.parse::<u32>()).filter_map(|s| s.ok()).collect_tuple() else {
+                panic!("Unexpected format of move commands: {}", l);
+            };
+            storage.moves.push(Move { count, from, to })
+        });
+
+        Ok(storage)
     }
 }
 
