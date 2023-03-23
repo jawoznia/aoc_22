@@ -30,9 +30,13 @@ impl FileSystem {
                 let words: Vec<&str> = line.split_whitespace().collect();
 
                 if words[0] == "$" {
-                    let new_path = file_system.current_dir.join(words[2]);
-                    file_system.directories.0.insert(new_path.clone(), 0);
-                    file_system.current_dir = new_path;
+                    if words[2] == ".." {
+                        file_system.current_dir.pop();
+                    } else {
+                        let new_path = file_system.current_dir.join(words[2]);
+                        file_system.directories.0.insert(new_path.clone(), 0);
+                        file_system.current_dir = new_path;
+                    }
                 } else {
                     match file_system.directories.0.get_mut(&file_system.current_dir) {
                         Some(size) => {
