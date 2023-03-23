@@ -32,6 +32,9 @@ impl FileSystem {
                 if words[0] == "$" {
                     if words[2] == ".." {
                         file_system.current_dir.pop();
+                    } else if words[2] == "/" && !file_system.directories.0.is_empty() {
+                        file_system.current_dir = PathBuf::new();
+                        file_system.current_dir.push("/");
                     } else {
                         let new_path = file_system.current_dir.join(words[2]);
                         file_system.directories.0.insert(new_path.clone(), 0);
@@ -40,12 +43,8 @@ impl FileSystem {
                 } else {
                     match file_system.directories.0.get_mut(&file_system.current_dir) {
                         Some(size) => {
-                            size.checked_add(words[0].parse::<u64>().unwrap())
-                                .unwrap_or_else(|| {
-                                    panic!("Overflow: {:#?}", file_system.current_dir)
-                                });
+                            *size += words[0].parse::<u64>().unwrap();
                         }
-
                         None => panic!("No such directory: {:#?}", file_system.current_dir),
                     }
                 }
