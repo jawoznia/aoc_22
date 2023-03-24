@@ -70,9 +70,16 @@ impl Directories {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
-    fn it_works() {
+    fn example() {
         let fs = Directories::new("example.txt").unwrap();
         assert_eq!(fs.sum(), 95437);
+    }
+
+    #[test]
+    fn input() {
+        let fs = Directories::new("input.txt").unwrap();
+        assert_eq!(fs.sum(), 1648397);
     }
 }
