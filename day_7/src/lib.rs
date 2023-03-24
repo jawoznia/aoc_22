@@ -51,6 +51,20 @@ impl Directories {
 
         Ok(directories.into())
     }
+
+    pub fn sum(&self) -> u64 {
+        self.0
+            .iter()
+            .map(|(l_path, _)| {
+                self.0
+                    .iter()
+                    .filter(|(r_path, _)| r_path.starts_with(l_path))
+                    .map(|(_, size)| size)
+                    .sum::<u64>()
+            })
+            .filter(|size| *size <= 100000 as u64)
+            .sum()
+    }
 }
 
 #[cfg(test)]
@@ -59,6 +73,6 @@ mod tests {
     #[test]
     fn it_works() {
         let fs = Directories::new("example.txt").unwrap();
-        println!("{:#?}", fs);
+        assert_eq!(fs.sum(), 95437);
     }
 }
