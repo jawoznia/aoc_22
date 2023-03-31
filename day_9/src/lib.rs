@@ -1,7 +1,15 @@
+use std::collections::HashSet;
+
 use anyhow::Result;
 use itertools::Itertools;
 
-#[derive(Debug, PartialEq)]
+pub struct Solution {
+    pub head: Point,
+    pub tail: Point,
+    pub visited_fields: usize,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
@@ -44,9 +52,10 @@ impl Point {
     }
 }
 
-pub fn get_positions(file: &str) -> Result<(Point, Point)> {
+pub fn get_positions(file: &str) -> Result<Solution> {
     let mut tail = Point::new(0, 0);
     let mut head = Point::new(0, 0);
+    let mut visited = HashSet::new();
 
     std::fs::read_to_string(file)?.lines().for_each(|line| {
         let (direction, moves_count) = line.split_whitespace().collect_tuple().unwrap();
@@ -54,10 +63,18 @@ pub fn get_positions(file: &str) -> Result<(Point, Point)> {
         for _ in 0..moves_count {
             head.move_in_direction(direction);
             tail.move_towards(&head);
+
+            if !visited.contains(&tail) {
+                visited.insert(tail);
+            }
         }
     });
 
-    Ok((tail, head))
+    Ok(Solution {
+        head,
+        tail,
+        visited_fields: visited.len(),
+    })
 }
 
 #[cfg(test)]
@@ -66,15 +83,17 @@ mod tests {
 
     #[test]
     fn example() {
-        let (tail, head) = get_positions("example.txt").unwrap();
-        assert_eq!(head, Point { x: 2, y: 2 });
-        assert_eq!(tail, Point { x: 1, y: 2 });
+        let solution = get_positions("example.txt").unwrap();
+        assert_eq!(solution.visited_fields, 13);
+        assert_eq!(solution.head, Point { x: 2, y: 2 });
+        assert_eq!(solution.tail, Point { x: 1, y: 2 });
     }
 
     #[test]
     fn input() {
-        let (tail, head) = get_positions("input.txt").unwrap();
-        assert_eq!(head, Point { x: 363, y: -100 });
-        assert_eq!(tail, Point { x: 364, y: -100 });
+        let solution = get_positions("input.txt").unwrap();
+        assert_eq!(solution.visited_fields, 6212);
+        assert_eq!(solution.head, Point { x: 363, y: -100 });
+        assert_eq!(solution.tail, Point { x: 364, y: -100 });
     }
 }
