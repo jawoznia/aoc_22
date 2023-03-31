@@ -34,21 +34,22 @@ impl Point {
         (self.x - other.x).abs() <= 1 && (self.y - other.y).abs() <= 1
     }
 
-    pub fn move_towards(&mut self, other: &Point) {
+    pub fn move_towards(mut self, other: &Point) -> Self {
         if self.is_adjacent_to(other) {
-            return;
+            return self;
         }
 
-        if self.x - other.x > 0 {
-            self.x -= 1;
-        } else if self.x - other.x < 0 {
-            self.x += 1;
+        match self.x.cmp(&other.x) {
+            std::cmp::Ordering::Less => self.x += 1,
+            std::cmp::Ordering::Greater => self.x -= 1,
+            _ => (),
         }
-        if self.y - other.y > 0 {
-            self.y -= 1;
-        } else if self.y - other.y < 0 {
-            self.y += 1;
+        match self.y.cmp(&other.y) {
+            std::cmp::Ordering::Less => self.y += 1,
+            std::cmp::Ordering::Greater => self.y -= 1,
+            _ => (),
         }
+        self
     }
 }
 
@@ -62,7 +63,7 @@ pub fn get_positions(file: &str) -> Result<Solution> {
         let moves_count = moves_count.parse::<i32>().unwrap();
         for _ in 0..moves_count {
             head.move_in_direction(direction);
-            tail.move_towards(&head);
+            tail = tail.move_towards(&head);
 
             if !visited.contains(&tail) {
                 visited.insert(tail);
@@ -73,6 +74,33 @@ pub fn get_positions(file: &str) -> Result<Solution> {
     Ok(Solution {
         head,
         tail,
+        visited_fields: visited.len(),
+    })
+}
+
+pub fn whole_rope(file: &str) -> Result<Solution> {
+    let mut rope = vec![Point::new(0, 0); 10];
+    let mut visited = HashSet::new();
+
+    std::fs::read_to_string(file)?.lines().for_each(|line| {
+        let (direction, moves_count) = line.split_whitespace().collect_tuple().unwrap();
+        let moves_count = moves_count.parse::<i32>().unwrap();
+        for _ in 0..moves_count {
+            rope[0].move_in_direction(direction);
+            (1..10).for_each(|i| {
+                rope[i] = rope[i].move_towards(&rope[i - 1]);
+            });
+
+            // let s = &rope[9].borrow().to_owned;
+            // if !visited.contains(&rope[9].borrow()) {
+            visited.insert(rope[9]);
+            // }
+        }
+    });
+
+    Ok(Solution {
+        head: rope[0],
+        tail: rope[9],
         visited_fields: visited.len(),
     })
 }
@@ -95,5 +123,29 @@ mod tests {
         assert_eq!(solution.visited_fields, 6212);
         assert_eq!(solution.head, Point { x: 363, y: -100 });
         assert_eq!(solution.tail, Point { x: 364, y: -100 });
+    }
+
+    #[test]
+    fn example_2() {
+        let solution = whole_rope("example.txt").unwrap();
+        assert_eq!(solution.visited_fields, 1);
+        assert_eq!(solution.head, Point { x: 2, y: 2 });
+        assert_eq!(solution.tail, Point { x: 0, y: 0 });
+    }
+
+    #[test]
+    fn second_example_2() {
+        let solution = whole_rope("second_example.txt").unwrap();
+        assert_eq!(solution.visited_fields, 36);
+        assert_eq!(solution.head, Point { x: -11, y: 15 });
+        assert_eq!(solution.tail, Point { x: -11, y: 6 });
+    }
+
+    #[test]
+    fn input_2() {
+        let solution = whole_rope("input.txt").unwrap();
+        assert_eq!(solution.visited_fields, 2522);
+        assert_eq!(solution.head, Point { x: 363, y: -100 });
+        assert_eq!(solution.tail, Point { x: 365, y: -93 });
     }
 }
