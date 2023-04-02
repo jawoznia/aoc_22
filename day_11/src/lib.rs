@@ -2,6 +2,19 @@ use std::fs::read_to_string;
 
 use anyhow::Result;
 use itertools::Itertools;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum MonkeyError {
+    #[error("Wrong divisor format")]
+    WrongDivisorFormat,
+    #[error("Wrong matched monkey identifier")]
+    WrongMatchedMonkeyIdentifier,
+    #[error("Wrong unmatched monkey identifier")]
+    WrongUnmatchedMonkeyIdentifier,
+    #[error("{0}")]
+    ParseIntError(#[from] std::num::ParseIntError),
+}
 
 #[derive(Debug)]
 pub enum Operation {
@@ -11,22 +24,22 @@ pub enum Operation {
 }
 
 impl Operation {
-    pub fn new((op, right): (&str, &str)) -> Self {
+    pub fn new((op, right): (&str, &str)) -> Result<Self> {
         let right = if right == "old" {
             None
         } else {
-            Some(right.parse::<u32>().unwrap())
+            Some(right.parse::<u32>()?)
         };
         if op == "+" {
             if let Some(right) = right {
-                Self::Add(right)
+                Ok(Self::Add(right))
             } else {
-                Self::Multiply(2)
+                Ok(Self::Multiply(2))
             }
         } else if let Some(right) = right {
-            Self::Multiply(right)
+            Ok(Self::Multiply(right))
         } else {
-            Self::Power
+            Ok(Self::Power)
         }
     }
 }
@@ -39,23 +52,23 @@ pub struct Test {
 }
 
 impl Test {
-    pub fn new(divisor: &str, matched: &str, unmatched: &str) -> Result<Self> {
+    pub fn new(divisor: &str, matched: &str, unmatched: &str) -> Result<Self, MonkeyError> {
         let divisor = divisor
             .split_whitespace()
             .nth(3)
-            .ok_or_else(|| anyhow::anyhow!("Wrong divisor format"))?
+            .ok_or_else(|| MonkeyError::WrongDivisorFormat)?
             .parse::<u32>()?;
 
         let matched_receiver = matched
             .split_whitespace()
             .nth(5)
-            .ok_or_else(|| anyhow::anyhow!("Wrong matched monkey identifier"))?
+            .ok_or_else(|| MonkeyError::WrongMatchedMonkeyIdentifier)?
             .parse::<u32>()?;
 
         let unmatched_receiver = unmatched
             .split_whitespace()
             .nth(5)
-            .ok_or_else(|| anyhow::anyhow!("Wrong unmatched monkey identifier"))?
+            .ok_or_else(|| MonkeyError::WrongUnmatchedMonkeyIdentifier)?
             .parse::<u32>()?;
 
         Ok(Test {
@@ -89,15 +102,15 @@ impl Monkey {
         let items = items
             .split_whitespace()
             .skip(2)
-            .map(|item| item.replace(',', "").parse::<u32>().unwrap())
-            .collect::<Vec<_>>();
+            .map(|item| -> Result<u32> { item.replace(',', "").parse::<u32>().map_err(Into::into) })
+            .collect::<Result<Vec<_>>>()?;
 
         let mut operation = op
             .split_whitespace()
             .skip(4)
             .tuples()
             .map(|(op, right)| Operation::new((op, right)))
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
         assert_eq!(operation.len(), 1);
         let operation = operation.pop().unwrap();
 
