@@ -56,19 +56,19 @@ impl Test {
         let divisor = divisor
             .split_whitespace()
             .nth(3)
-            .ok_or_else(|| MonkeyError::WrongDivisorFormat)?
+            .ok_or(MonkeyError::WrongDivisorFormat)?
             .parse::<u32>()?;
 
         let matched_receiver = matched
             .split_whitespace()
             .nth(5)
-            .ok_or_else(|| MonkeyError::WrongMatchedMonkeyIdentifier)?
+            .ok_or(MonkeyError::WrongMatchedMonkeyIdentifier)?
             .parse::<u32>()?;
 
         let unmatched_receiver = unmatched
             .split_whitespace()
             .nth(5)
-            .ok_or_else(|| MonkeyError::WrongUnmatchedMonkeyIdentifier)?
+            .ok_or(MonkeyError::WrongUnmatchedMonkeyIdentifier)?
             .parse::<u32>()?;
 
         Ok(Test {
@@ -139,37 +139,41 @@ impl Monkeys {
         Ok(monkeys)
     }
 
-    pub fn sling_stuff(self) {
-        let mut inspections_count = vec![0; self.0.len()];
+    pub fn sling_stuff(self) -> Option<(u32, u32)> {
+        let mut inspections_count = vec![0_u32; self.0.len()];
         for _ in 0..20 {
             self.0.iter().zip(inspections_count.iter_mut()).for_each(
-                |(monkey, inspection_count)| match monkey.items.borrow_mut().pop() {
-                    Some(item) => {
-                        *inspection_count += 1;
-                        let item = match &monkey.operation {
-                            Operation::Add(right) => (item + right) / 3,
-                            Operation::Multiply(right) => (item * right) / 3,
-                            Operation::Power => item.pow(2) / 3,
-                        };
-                        if item % monkey.test.divisor == 0 {
-                            self.0[monkey.test.matched_receiver as usize]
-                                .items
-                                .borrow_mut()
-                                .push(item);
-                        } else {
-                            self.0[monkey.test.unmatched_receiver as usize]
-                                .items
-                                .borrow_mut()
-                                .push(item);
+                |(monkey, inspection_count)| {
+                    let items_count = monkey.items.borrow().len();
+                    for _ in 0..items_count {
+                        if let Some(item) = monkey.items.borrow_mut().pop() {
+                            *inspection_count += 1;
+                            let item = match &monkey.operation {
+                                Operation::Add(right) => (item + right) / 3,
+                                Operation::Multiply(right) => (item * right) / 3,
+                                Operation::Power => item.pow(2) / 3,
+                            };
+                            if item % monkey.test.divisor == 0 {
+                                self.0[monkey.test.matched_receiver as usize]
+                                    .items
+                                    .borrow_mut()
+                                    .push(item);
+                            } else {
+                                self.0[monkey.test.unmatched_receiver as usize]
+                                    .items
+                                    .borrow_mut()
+                                    .push(item);
+                            }
                         }
                     }
-                    None => {}
                 },
             );
         }
         inspections_count.iter().enumerate().for_each(|(i, count)| {
-            println!("Monkey {} inspected {} items", i, count);
+            println!("Monkey {} inspected items {} times", i, count);
         });
+        inspections_count.sort();
+        inspections_count.into_iter().rev().take(2).collect_tuple()
     }
 }
 
@@ -180,10 +184,15 @@ mod tests {
     #[test]
     fn example() {
         let monkey = Monkeys::new("example.txt").unwrap();
-        monkey.sling_stuff();
+        let (first, second) = monkey.sling_stuff().unwrap();
+        assert_eq!(first, 105);
+        assert_eq!(second, 101);
     }
     #[test]
     fn input() {
-        let _monkey = Monkeys::new("input.txt").unwrap();
+        let monkey = Monkeys::new("input.txt").unwrap();
+        let (first, second) = monkey.sling_stuff().unwrap();
+        assert_eq!(first, 253);
+        assert_eq!(second, 247);
     }
 }
