@@ -1,4 +1,4 @@
-use std::fs::read_to_string;
+use std::{cell::RefCell, fs::read_to_string};
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -81,7 +81,7 @@ impl Test {
 
 #[derive(Debug)]
 pub struct Monkey {
-    pub items: Vec<u32>,
+    pub items: RefCell<Vec<u32>>,
     pub operation: Operation,
     pub test: Test,
 }
@@ -104,6 +104,7 @@ impl Monkey {
             .skip(2)
             .map(|item| -> Result<u32> { item.replace(',', "").parse::<u32>().map_err(Into::into) })
             .collect::<Result<Vec<_>>>()?;
+        let items = RefCell::new(items);
 
         let mut operation = op
             .split_whitespace()
@@ -128,15 +129,47 @@ impl Monkeys {
     pub fn new(file: &str) -> Result<Self> {
         let monkeys: Monkeys = read_to_string(file)?
             .lines()
+            .filter(|line| !(line.is_empty() || line.starts_with("Monkey")))
             .tuples()
-            .map(
-                |(_, items, op, test, matched, unmatched, _)| -> Result<Monkey> {
-                    Monkey::new((items, op, test, matched, unmatched))
-                },
-            )
+            .map(|(items, op, test, matched, unmatched)| -> Result<Monkey> {
+                Monkey::new((items, op, test, matched, unmatched))
+            })
             .collect::<Result<Monkeys>>()?;
 
         Ok(monkeys)
+    }
+
+    pub fn sling_stuff(self) {
+        let mut inspections_count = vec![0; self.0.len()];
+        for _ in 0..20 {
+            self.0.iter().zip(inspections_count.iter_mut()).for_each(
+                |(monkey, inspection_count)| match monkey.items.borrow_mut().pop() {
+                    Some(item) => {
+                        *inspection_count += 1;
+                        let item = match &monkey.operation {
+                            Operation::Add(right) => (item + right) / 3,
+                            Operation::Multiply(right) => (item * right) / 3,
+                            Operation::Power => item.pow(2) / 3,
+                        };
+                        if item % monkey.test.divisor == 0 {
+                            self.0[monkey.test.matched_receiver as usize]
+                                .items
+                                .borrow_mut()
+                                .push(item);
+                        } else {
+                            self.0[monkey.test.unmatched_receiver as usize]
+                                .items
+                                .borrow_mut()
+                                .push(item);
+                        }
+                    }
+                    None => {}
+                },
+            );
+        }
+        inspections_count.iter().enumerate().for_each(|(i, count)| {
+            println!("Monkey {} inspected {} items", i, count);
+        });
     }
 }
 
@@ -147,7 +180,7 @@ mod tests {
     #[test]
     fn example() {
         let monkey = Monkeys::new("example.txt").unwrap();
-        println!("{:#?}", monkey);
+        monkey.sling_stuff();
     }
     #[test]
     fn input() {
