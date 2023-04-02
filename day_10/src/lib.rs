@@ -52,9 +52,17 @@ pub fn print_message(file: &str) -> Result<()> {
             }
         })
         .collect();
-
     let mut instruction_iter = instructions.iter();
+
     for cycle in 0..240 {
+        // print
+        if (signal_strength..=signal_strength + 2).contains(&(cycle % 40)) {
+            print!("#");
+        } else {
+            print!(".");
+        }
+
+        // manage operation
         if ongoing_operation.is_none() {
             ongoing_operation = match instruction_iter.next() {
                 Some(Instruction::Addx(x)) => Some(x),
@@ -65,13 +73,7 @@ pub fn print_message(file: &str) -> Result<()> {
             ongoing_operation = None;
         }
 
-        if (signal_strength - 1..=signal_strength + 1).contains(&(cycle % 40)) {
-            print!("#");
-        } else {
-            print!(".");
-        }
-
-        // if cycle % 40 == 0 && cycle != 0 {
+        // check CRT
         if [39, 79, 119, 159, 199, 239].contains(&cycle) {
             print!("\n");
         }
