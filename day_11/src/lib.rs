@@ -139,7 +139,7 @@ impl Monkeys {
         Ok(monkeys)
     }
 
-    pub fn sling_stuff(self) -> Option<(u32, u32)> {
+    pub fn sling_stuff(self) -> u32 {
         let mut inspections_count = vec![0_u32; self.0.len()];
         for _ in 0..20 {
             self.0.iter().zip(inspections_count.iter_mut()).for_each(
@@ -173,7 +173,8 @@ impl Monkeys {
             println!("Monkey {} inspected items {} times", i, count);
         });
         inspections_count.sort();
-        inspections_count.into_iter().rev().take(2).collect_tuple()
+
+        inspections_count.into_iter().rev().take(2).product()
     }
 }
 
@@ -184,15 +185,13 @@ mod tests {
     #[test]
     fn example() {
         let monkey = Monkeys::new("example.txt").unwrap();
-        let (first, second) = monkey.sling_stuff().unwrap();
-        assert_eq!(first, 105);
-        assert_eq!(second, 101);
+        let inspections_product = monkey.sling_stuff();
+        assert_eq!(inspections_product, 10605);
     }
     #[test]
     fn input() {
         let monkey = Monkeys::new("input.txt").unwrap();
-        let (first, second) = monkey.sling_stuff().unwrap();
-        assert_eq!(first, 253);
-        assert_eq!(second, 247);
+        let inspections_product = monkey.sling_stuff();
+        assert_eq!(inspections_product, 62491);
     }
 }
