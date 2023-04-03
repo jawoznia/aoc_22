@@ -18,8 +18,8 @@ pub enum MonkeyError {
 
 #[derive(Debug)]
 pub enum Operation {
-    Add(u32),
-    Multiply(u32),
+    Add(u128),
+    Multiply(u128),
     Power,
 }
 
@@ -28,7 +28,7 @@ impl Operation {
         let right = if right == "old" {
             None
         } else {
-            Some(right.parse::<u32>()?)
+            Some(right.parse::<u128>()?)
         };
         if op == "+" {
             if let Some(right) = right {
@@ -46,7 +46,7 @@ impl Operation {
 
 #[derive(Debug)]
 pub struct Test {
-    pub divisor: u32,
+    pub divisor: u64,
     pub matched_receiver: u32,
     pub unmatched_receiver: u32,
 }
@@ -57,7 +57,7 @@ impl Test {
             .split_whitespace()
             .nth(3)
             .ok_or(MonkeyError::WrongDivisorFormat)?
-            .parse::<u32>()?;
+            .parse::<u64>()?;
 
         let matched_receiver = matched
             .split_whitespace()
@@ -81,7 +81,7 @@ impl Test {
 
 #[derive(Debug)]
 pub struct Monkey {
-    pub items: RefCell<Vec<u32>>,
+    pub items: RefCell<Vec<u128>>,
     pub operation: Operation,
     pub test: Test,
 }
@@ -102,7 +102,7 @@ impl Monkey {
         let items = items
             .split_whitespace()
             .skip(2)
-            .map(|item| -> Result<u32> { item.replace(',', "").parse::<u32>().map_err(Into::into) })
+            .map(|item| -> Result<_> { item.replace(',', "").parse::<u128>().map_err(Into::into) })
             .collect::<Result<Vec<_>>>()?;
         let items = RefCell::new(items);
 
@@ -139,9 +139,26 @@ impl Monkeys {
         Ok(monkeys)
     }
 
-    pub fn sling_stuff(self) -> u32 {
-        let mut inspections_count = vec![0_u32; self.0.len()];
-        for _ in 0..20 {
+    fn relief(&self, item: u128, relief_factor: Option<u128>) -> u128 {
+        match relief_factor {
+            Some(relief_factor) => item % relief_factor,
+            None => item / 3,
+        }
+    }
+
+    pub fn sling_stuff(self, rounds: u32, custom_relief: bool) -> u64 {
+        let mut inspections_count = vec![0_u64; self.0.len()];
+        let relief_factor = if custom_relief {
+            Some(
+                self.0
+                    .iter()
+                    .map(|monkey| monkey.test.divisor as u128)
+                    .product(),
+            )
+        } else {
+            None
+        };
+        for _ in 0..rounds {
             self.0.iter().zip(inspections_count.iter_mut()).for_each(
                 |(monkey, inspection_count)| {
                     let items_count = monkey.items.borrow().len();
@@ -149,11 +166,12 @@ impl Monkeys {
                         if let Some(item) = monkey.items.borrow_mut().pop() {
                             *inspection_count += 1;
                             let item = match &monkey.operation {
-                                Operation::Add(right) => (item + right) / 3,
-                                Operation::Multiply(right) => (item * right) / 3,
-                                Operation::Power => item.pow(2) / 3,
+                                Operation::Add(right) => item + right,
+                                Operation::Multiply(right) => item * right,
+                                Operation::Power => item.pow(2),
                             };
-                            if item % monkey.test.divisor == 0 {
+                            let item = self.relief(item, relief_factor);
+                            if item % monkey.test.divisor as u128 == 0 {
                                 self.0[monkey.test.matched_receiver as usize]
                                     .items
                                     .borrow_mut()
@@ -184,14 +202,27 @@ mod tests {
 
     #[test]
     fn example() {
-        let monkey = Monkeys::new("example.txt").unwrap();
-        let inspections_product = monkey.sling_stuff();
+        let monkeys = Monkeys::new("example.txt").unwrap();
+        let inspections_product = monkeys.sling_stuff(20, false);
         assert_eq!(inspections_product, 10605);
     }
     #[test]
     fn input() {
-        let monkey = Monkeys::new("input.txt").unwrap();
-        let inspections_product = monkey.sling_stuff();
+        let monkeys = Monkeys::new("input.txt").unwrap();
+        let inspections_product = monkeys.sling_stuff(20, false);
         assert_eq!(inspections_product, 62491);
+    }
+
+    #[test]
+    fn example_without_relief() {
+        let monkeys = Monkeys::new("example.txt").unwrap();
+        let inspections_product = monkeys.sling_stuff(10000, true);
+        assert_eq!(inspections_product, 2713310158);
+    }
+    #[test]
+    fn input_without_relief() {
+        let monkeys = Monkeys::new("input.txt").unwrap();
+        let inspections_product = monkeys.sling_stuff(10000, true);
+        assert_eq!(inspections_product, 17408399184);
     }
 }
