@@ -87,12 +87,9 @@ pub struct Monkey {
 }
 
 #[derive(Debug)]
-pub struct Monkeys(Vec<Monkey>);
-
-impl FromIterator<Monkey> for Monkeys {
-    fn from_iter<I: IntoIterator<Item = Monkey>>(iter: I) -> Self {
-        Self(iter.into_iter().collect())
-    }
+pub struct Monkeys {
+    monkeys: Vec<Monkey>,
+    relief_factor: Option<u128>,
 }
 
 impl Monkey {
@@ -126,31 +123,19 @@ impl Monkey {
 }
 
 impl Monkeys {
-    pub fn new(file: &str) -> Result<Self> {
-        let monkeys: Monkeys = read_to_string(file)?
+    pub fn new(file: &str, custom_relief: bool) -> Result<Self> {
+        let monkeys = read_to_string(file)?
             .lines()
             .filter(|line| !(line.is_empty() || line.starts_with("Monkey")))
             .tuples()
             .map(|(items, op, test, matched, unmatched)| -> Result<Monkey> {
                 Monkey::new((items, op, test, matched, unmatched))
             })
-            .collect::<Result<Monkeys>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
-        Ok(monkeys)
-    }
-
-    fn relief(&self, item: u128, relief_factor: Option<u128>) -> u128 {
-        match relief_factor {
-            Some(relief_factor) => item % relief_factor,
-            None => item / 3,
-        }
-    }
-
-    pub fn sling_stuff(self, rounds: u32, custom_relief: bool) -> u64 {
-        let mut inspections_count = vec![0_u64; self.0.len()];
         let relief_factor = if custom_relief {
             Some(
-                self.0
+                monkeys
                     .iter()
                     .map(|monkey| monkey.test.divisor as u128)
                     .product(),
@@ -158,9 +143,26 @@ impl Monkeys {
         } else {
             None
         };
+        Ok(Self {
+            monkeys,
+            relief_factor,
+        })
+    }
+
+    fn relief(&self, item: u128) -> u128 {
+        match self.relief_factor {
+            Some(relief_factor) => item % relief_factor,
+            None => item / 3,
+        }
+    }
+
+    pub fn sling_stuff(self, rounds: u32) -> u64 {
+        let mut inspections_count = vec![0_u64; self.monkeys.len()];
         for _ in 0..rounds {
-            self.0.iter().zip(inspections_count.iter_mut()).for_each(
-                |(monkey, inspection_count)| {
+            self.monkeys
+                .iter()
+                .zip(inspections_count.iter_mut())
+                .for_each(|(monkey, inspection_count)| {
                     let items_count = monkey.items.borrow().len();
                     for _ in 0..items_count {
                         if let Some(item) = monkey.items.borrow_mut().pop() {
@@ -170,22 +172,21 @@ impl Monkeys {
                                 Operation::Multiply(right) => item * right,
                                 Operation::Power => item.pow(2),
                             };
-                            let item = self.relief(item, relief_factor);
+                            let item = self.relief(item);
                             if item % monkey.test.divisor as u128 == 0 {
-                                self.0[monkey.test.matched_receiver as usize]
+                                self.monkeys[monkey.test.matched_receiver as usize]
                                     .items
                                     .borrow_mut()
                                     .push(item);
                             } else {
-                                self.0[monkey.test.unmatched_receiver as usize]
+                                self.monkeys[monkey.test.unmatched_receiver as usize]
                                     .items
                                     .borrow_mut()
                                     .push(item);
                             }
                         }
                     }
-                },
-            );
+                });
         }
         inspections_count.iter().enumerate().for_each(|(i, count)| {
             println!("Monkey {} inspected items {} times", i, count);
@@ -202,27 +203,27 @@ mod tests {
 
     #[test]
     fn example() {
-        let monkeys = Monkeys::new("example.txt").unwrap();
-        let inspections_product = monkeys.sling_stuff(20, false);
+        let monkeys = Monkeys::new("example.txt", false).unwrap();
+        let inspections_product = monkeys.sling_stuff(20);
         assert_eq!(inspections_product, 10605);
     }
     #[test]
     fn input() {
-        let monkeys = Monkeys::new("input.txt").unwrap();
-        let inspections_product = monkeys.sling_stuff(20, false);
+        let monkeys = Monkeys::new("input.txt", false).unwrap();
+        let inspections_product = monkeys.sling_stuff(20);
         assert_eq!(inspections_product, 62491);
     }
 
     #[test]
     fn example_without_relief() {
-        let monkeys = Monkeys::new("example.txt").unwrap();
-        let inspections_product = monkeys.sling_stuff(10000, true);
+        let monkeys = Monkeys::new("example.txt", true).unwrap();
+        let inspections_product = monkeys.sling_stuff(10000);
         assert_eq!(inspections_product, 2713310158);
     }
     #[test]
     fn input_without_relief() {
-        let monkeys = Monkeys::new("input.txt").unwrap();
-        let inspections_product = monkeys.sling_stuff(10000, true);
+        let monkeys = Monkeys::new("input.txt", true).unwrap();
+        let inspections_product = monkeys.sling_stuff(10000);
         assert_eq!(inspections_product, 17408399184);
     }
 }
