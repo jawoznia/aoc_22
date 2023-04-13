@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::fs::read_to_string;
+use std::{cell::RefCell, fs::read_to_string};
 
 use thiserror::Error;
 
@@ -9,13 +9,15 @@ pub enum GridError {
     NoStartingPoint,
     #[error("{0}")]
     Io(#[from] std::io::Error),
+    #[error("Height map is empty")]
+    HeightMapEmpty(),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Point {
     x: usize,
     y: usize,
-    steps: u32,
+    steps: RefCell<u32>,
     symbol: char,
 }
 
@@ -35,7 +37,7 @@ impl Grid {
                         Point {
                             x,
                             y,
-                            steps,
+                            steps: RefCell::new(steps),
                             symbol: c,
                         }
                     })
@@ -58,19 +60,57 @@ impl Grid {
         while let Some(current_point) = queue.pop() {
             let mut neighbours = vec![];
             if current_point.x > 0
-                && self.check_left_neighbour(
-                    current_point,
-                    &self.0[current_point.y][current_point.x - 1],
-                )
+                && self
+                    .check_neighbour(current_point, &self.0[current_point.y][current_point.x - 1])
             {
+                self.0[current_point.y][current_point.x - 1]
+                    .steps
+                    .replace(*current_point.steps.borrow() + 1);
                 neighbours.push(&self.0[current_point.y][current_point.x - 1]);
             }
+
+            if current_point.x < self.0[current_point.x].len()
+                && self
+                    .check_neighbour(current_point, &self.0[current_point.y][current_point.x + 1])
+            {
+                self.0[current_point.y][current_point.x + 1]
+                    .steps
+                    .replace(*current_point.steps.borrow() + 1);
+                neighbours.push(&self.0[current_point.y][current_point.x + 1]);
+            }
+
+            if current_point.y > 0
+                && self
+                    .check_neighbour(current_point, &self.0[current_point.y - 1][current_point.x])
+            {
+                self.0[current_point.y - 1][current_point.x]
+                    .steps
+                    .replace(*current_point.steps.borrow() + 1);
+                neighbours.push(&self.0[current_point.y - 1][current_point.x]);
+            }
+
+            if current_point.y < self.0.len()
+                && self
+                    .check_neighbour(current_point, &self.0[current_point.y + 1][current_point.x])
+            {
+                self.0[current_point.y + 1][current_point.x]
+                    .steps
+                    .replace(*current_point.steps.borrow() + 1);
+                neighbours.push(&self.0[current_point.y + 1][current_point.x]);
+            }
         }
-        Ok(0)
+        let max_steps = self
+            .0
+            .iter()
+            .flatten()
+            .map(|point| *point.steps.borrow())
+            .max()
+            .unwrap_or(0);
+        Ok(max_steps)
     }
 
-    fn check_left_neighbour(&self, current: &Point, neighbour: &Point) -> bool {
-        current.steps + 1 < neighbour.steps
+    fn check_neighbour(&self, current: &Point, neighbour: &Point) -> bool {
+        *current.steps.borrow() + 1 < *neighbour.steps.borrow()
             && (current.symbol == neighbour.symbol
                 || current.symbol as u8 == neighbour.symbol as u8 + 1)
             || neighbour.symbol == 'Z'
@@ -79,7 +119,7 @@ impl Grid {
     pub fn print(&self) {
         self.0.iter().for_each(|line| {
             line.iter().for_each(|c| {
-                print!("{:#?}", c);
+                print!("{:#?}; ", *c.steps.borrow());
             });
             print!("\n")
         });
