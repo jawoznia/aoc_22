@@ -55,10 +55,9 @@ impl Grid {
             .flatten()
             .find(|p| p.symbol == 'S')
             .ok_or(GridError::NoStartingPoint)?;
-        let mut queue = vec![starting_point];
+        let mut neighbours = vec![starting_point];
 
-        while let Some(current_point) = queue.pop() {
-            let mut neighbours = vec![];
+        while let Some(current_point) = neighbours.pop() {
             if current_point.x > 0
                 && self
                     .check_neighbour(current_point, &self.0[current_point.y][current_point.x - 1])
