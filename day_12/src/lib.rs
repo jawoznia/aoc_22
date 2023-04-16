@@ -57,6 +57,7 @@ impl Grid {
             .find(|p| p.symbol == 'S')
             .ok_or(GridError::NoStartingPoint)?;
         let mut neighbours = vec![starting_point];
+        println!("Starting point: {:?}", starting_point);
 
         while let Some(current) = neighbours.pop() {
             if current.x > 0 && self.check_neighbour(current, &self.0[current.y][current.x - 1]) {
@@ -95,10 +96,16 @@ impl Grid {
             .0
             .iter()
             .flatten()
-            .map(|point| *point.steps.borrow())
-            .max()
-            .unwrap_or(0);
-        Ok(max_steps)
+            .filter_map(|point| {
+                if point.symbol == 'E' {
+                    Some(*point.steps.borrow())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<u32>>();
+        assert_eq!(max_steps.len(), 1);
+        Ok(max_steps[0])
     }
 
     fn check_neighbour(&self, current: &Point, neighbour: &Point) -> bool {
@@ -114,7 +121,7 @@ impl Grid {
             line.iter().for_each(|c| {
                 print!("{:#?}; ", *c.steps.borrow());
             });
-            print!("\n")
+            println!();
         });
     }
 }
@@ -127,15 +134,15 @@ mod tests {
     fn example() {
         let grid = Grid::new("example.txt").unwrap();
         let steps = grid.find_optimal_steps().unwrap();
-        println!("Steps: {}", steps);
         grid.print();
+        assert_eq!(steps, 31);
     }
 
     #[test]
     fn input() {
         let grid = Grid::new("input.txt").unwrap();
         let steps = grid.find_optimal_steps().unwrap();
-        println!("Steps: {}", steps);
         grid.print();
+        assert_eq!(steps, 31);
     }
 }
