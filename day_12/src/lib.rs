@@ -2,18 +2,6 @@ use anyhow::Result;
 use std::cell::RefCell;
 use std::fs::read_to_string;
 
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum GridError {
-    #[error("No starting point found")]
-    NoStartingPoint,
-    #[error("{0}")]
-    Io(#[from] std::io::Error),
-    #[error("Height map is empty")]
-    HeightMapEmpty(),
-}
-
 #[derive(Debug, Clone)]
 pub struct Point {
     x: usize,
@@ -26,7 +14,7 @@ pub struct Point {
 pub struct Grid(Vec<Vec<Point>>);
 
 impl Grid {
-    pub fn new(file: &str) -> Result<Self, GridError> {
+    pub fn new(file: &str) -> Result<Self> {
         let grid = read_to_string(file)?
             .lines()
             .enumerate()
@@ -49,13 +37,22 @@ impl Grid {
         Ok(Self(grid))
     }
 
-    pub fn find_optimal_steps(&self) -> Result<u32, GridError> {
-        let starting_point = self
-            .0
+    pub fn optimal_steps_from(&self, starting_symbols: &[char]) -> Option<u32> {
+        self.0
             .iter()
             .flatten()
-            .find(|p| p.symbol == 'S')
-            .ok_or(GridError::NoStartingPoint)?;
+            .filter(|p| starting_symbols.contains(&p.symbol))
+            .map(|p| {
+                self.0.iter().flatten().for_each(|p| {
+                    p.steps.replace(u32::MAX);
+                });
+                p.steps.replace(0);
+                self.find_optimal_steps(p)
+            })
+            .min()
+    }
+
+    fn find_optimal_steps(&self, starting_point: &Point) -> u32 {
         let mut neighbours = vec![starting_point];
 
         while let Some(current) = neighbours.pop() {
@@ -104,7 +101,7 @@ impl Grid {
             })
             .collect::<Vec<u32>>();
         assert_eq!(max_steps.len(), 1);
-        Ok(max_steps[0])
+        max_steps[0]
     }
 
     fn check_neighbour(&self, current: &Point, neighbour: &Point) -> bool {
@@ -134,7 +131,7 @@ mod tests {
     #[test]
     fn example() {
         let grid = Grid::new("example.txt").unwrap();
-        let steps = grid.find_optimal_steps().unwrap();
+        let steps = grid.optimal_steps_from(&['S']).unwrap();
         grid.print();
         assert_eq!(steps, 31);
     }
@@ -142,8 +139,24 @@ mod tests {
     #[test]
     fn input() {
         let grid = Grid::new("input.txt").unwrap();
-        let steps = grid.find_optimal_steps().unwrap();
+        let steps = grid.optimal_steps_from(&['S']).unwrap();
         grid.print();
         assert_eq!(steps, 352);
+    }
+
+    #[test]
+    fn example_two() {
+        let grid = Grid::new("example.txt").unwrap();
+        let steps = grid.optimal_steps_from(&['S', 'a']).unwrap();
+        grid.print();
+        assert_eq!(steps, 29);
+    }
+
+    #[test]
+    fn input_two() {
+        let grid = Grid::new("input.txt").unwrap();
+        let steps = grid.optimal_steps_from(&['S', 'a']).unwrap();
+        grid.print();
+        assert_eq!(steps, 345);
     }
 }
