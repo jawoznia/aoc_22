@@ -110,8 +110,7 @@ impl Grid {
 
     fn check_neighbour(&self, current: &Point, neighbour: &Point) -> bool {
         *current.steps.borrow() + 1 < *neighbour.steps.borrow()
-            && (current.symbol == neighbour.symbol
-                || [0_i32, 1_i32].contains(&(neighbour.symbol as i32 - current.symbol as i32)))
+            && (neighbour.symbol as i32 - current.symbol as i32) <= 1
             || (current.symbol == 'z' && neighbour.symbol == 'E')
             || (current.symbol == 'S' && ['a', 'b'].contains(&neighbour.symbol))
     }
@@ -143,6 +142,6 @@ mod tests {
         let grid = Grid::new("input.txt").unwrap();
         let steps = grid.find_optimal_steps().unwrap();
         grid.print();
-        assert_eq!(steps, 31);
+        assert_eq!(steps, 352);
     }
 }
