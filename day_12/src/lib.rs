@@ -1,5 +1,6 @@
 use anyhow::Result;
-use std::{cell::RefCell, fs::read_to_string};
+use std::cell::RefCell;
+use std::fs::read_to_string;
 
 use thiserror::Error;
 
@@ -57,45 +58,37 @@ impl Grid {
             .ok_or(GridError::NoStartingPoint)?;
         let mut neighbours = vec![starting_point];
 
-        while let Some(current_point) = neighbours.pop() {
-            if current_point.x > 0
-                && self
-                    .check_neighbour(current_point, &self.0[current_point.y][current_point.x - 1])
-            {
-                self.0[current_point.y][current_point.x - 1]
+        while let Some(current) = neighbours.pop() {
+            if current.x > 0 && self.check_neighbour(current, &self.0[current.y][current.x - 1]) {
+                self.0[current.y][current.x - 1]
                     .steps
-                    .replace(*current_point.steps.borrow() + 1);
-                neighbours.push(&self.0[current_point.y][current_point.x - 1]);
+                    .replace(*current.steps.borrow() + 1);
+                neighbours.push(&self.0[current.y][current.x - 1]);
             }
 
-            if current_point.x < self.0[current_point.x].len()
-                && self
-                    .check_neighbour(current_point, &self.0[current_point.y][current_point.x + 1])
+            if current.x < self.0[current.y].len() - 1
+                && self.check_neighbour(current, &self.0[current.y][current.x + 1])
             {
-                self.0[current_point.y][current_point.x + 1]
+                self.0[current.y][current.x + 1]
                     .steps
-                    .replace(*current_point.steps.borrow() + 1);
-                neighbours.push(&self.0[current_point.y][current_point.x + 1]);
+                    .replace(*current.steps.borrow() + 1);
+                neighbours.push(&self.0[current.y][current.x + 1]);
             }
 
-            if current_point.y > 0
-                && self
-                    .check_neighbour(current_point, &self.0[current_point.y - 1][current_point.x])
-            {
-                self.0[current_point.y - 1][current_point.x]
+            if current.y > 0 && self.check_neighbour(current, &self.0[current.y - 1][current.x]) {
+                self.0[current.y - 1][current.x]
                     .steps
-                    .replace(*current_point.steps.borrow() + 1);
-                neighbours.push(&self.0[current_point.y - 1][current_point.x]);
+                    .replace(*current.steps.borrow() + 1);
+                neighbours.push(&self.0[current.y - 1][current.x]);
             }
 
-            if current_point.y < self.0.len()
-                && self
-                    .check_neighbour(current_point, &self.0[current_point.y + 1][current_point.x])
+            if current.y < self.0.len() - 1
+                && self.check_neighbour(current, &self.0[current.y + 1][current.x])
             {
-                self.0[current_point.y + 1][current_point.x]
+                self.0[current.y + 1][current.x]
                     .steps
-                    .replace(*current_point.steps.borrow() + 1);
-                neighbours.push(&self.0[current_point.y + 1][current_point.x]);
+                    .replace(*current.steps.borrow() + 1);
+                neighbours.push(&self.0[current.y + 1][current.x]);
             }
         }
         let max_steps = self
@@ -111,8 +104,9 @@ impl Grid {
     fn check_neighbour(&self, current: &Point, neighbour: &Point) -> bool {
         *current.steps.borrow() + 1 < *neighbour.steps.borrow()
             && (current.symbol == neighbour.symbol
-                || current.symbol as u8 == neighbour.symbol as u8 + 1)
-            || neighbour.symbol == 'Z'
+                || [0_i32, 1_i32].contains(&(neighbour.symbol as i32 - current.symbol as i32)))
+            || (current.symbol == 'z' && neighbour.symbol == 'E')
+            || (current.symbol == 'S' && ['a', 'b'].contains(&neighbour.symbol))
     }
 
     pub fn print(&self) {
@@ -132,12 +126,16 @@ mod tests {
     #[test]
     fn example() {
         let grid = Grid::new("example.txt").unwrap();
+        let steps = grid.find_optimal_steps().unwrap();
+        println!("Steps: {}", steps);
         grid.print();
     }
 
     #[test]
     fn input() {
         let grid = Grid::new("input.txt").unwrap();
+        let steps = grid.find_optimal_steps().unwrap();
+        println!("Steps: {}", steps);
         grid.print();
     }
 }
