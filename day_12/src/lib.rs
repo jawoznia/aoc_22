@@ -57,7 +57,6 @@ impl Grid {
             .find(|p| p.symbol == 'S')
             .ok_or(GridError::NoStartingPoint)?;
         let mut neighbours = vec![starting_point];
-        println!("Starting point: {:?}", starting_point);
 
         while let Some(current) = neighbours.pop() {
             if current.x > 0 && self.check_neighbour(current, &self.0[current.y][current.x - 1]) {
@@ -109,10 +108,13 @@ impl Grid {
     }
 
     fn check_neighbour(&self, current: &Point, neighbour: &Point) -> bool {
+        let current_symbol = match current.symbol {
+            'S' => 'a',
+            _ => current.symbol,
+        };
         *current.steps.borrow() + 1 < *neighbour.steps.borrow()
-            && (neighbour.symbol as i32 - current.symbol as i32) <= 1
+            && (neighbour.symbol as i32 - current_symbol as i32) <= 1
             || (current.symbol == 'z' && neighbour.symbol == 'E')
-            || (current.symbol == 'S' && ['a', 'b'].contains(&neighbour.symbol))
     }
 
     pub fn print(&self) {
