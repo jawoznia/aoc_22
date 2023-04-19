@@ -67,20 +67,34 @@ impl Signal {
             (Signal::List(a), Signal::List(b)) => {
                 let a = a.borrow();
                 let b = b.borrow();
-                if a.len() < b.len() {
+                if a.len() > b.len() {
+                    // println!("a.len() < b.len()");
+                    // println!("{:#?} < {:#?}", a, b);
                     return false;
                 }
                 a.iter()
                     .zip(b.iter())
                     .all(|(a, b)| a.is_in_order(b.as_ref()))
             }
-            (Signal::List(_), Signal::Integer(b)) => {
-                let b = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*b))]));
-                self.is_in_order(&b)
+            (Signal::List(a), Signal::Integer(_)) => {
+                // let b = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*b))]));
+                // self.is_in_order(&b)
+                if a.borrow().is_empty() {
+                    true
+                } else {
+                    let a = a.borrow().first().unwrap().clone();
+                    a.is_in_order(other)
+                }
             }
-            (Signal::Integer(a), Signal::List(_)) => {
-                let a = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*a))]));
-                other.is_in_order(&a)
+            (Signal::Integer(_), Signal::List(b)) => {
+                // let a = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*a))]));
+                // a.is_in_order(other)
+                if b.borrow().is_empty() {
+                    false
+                } else {
+                    let b = b.borrow().first().unwrap().clone();
+                    self.is_in_order(b.as_ref())
+                }
             }
         }
     }
@@ -117,9 +131,9 @@ impl PacketPairs {
             .enumerate()
             .filter(|(_, pair)| pair.is_in_order())
             .map(|(index, _)| index + 1)
-            .for_each(|index| println!("Pair {} is in order", index));
-        // .sum()
-        0
+            // .for_each(|index| println!("Pair {} is in order", index));
+            .sum()
+        // 0
     }
 }
 
@@ -168,6 +182,8 @@ mod tests {
 
     #[test]
     fn input_1() {
-        let _packet_pairs = PacketPairs::new("input.txt").unwrap();
+        let packet_pairs = PacketPairs::new("input.txt").unwrap();
+        let pairs_in_order = packet_pairs.count_pairs_in_order();
+        assert_eq!(pairs_in_order, 325);
     }
 }
