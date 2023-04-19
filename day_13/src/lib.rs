@@ -60,6 +60,30 @@ impl Signal {
         });
         output
     }
+
+    pub fn is_in_order(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Signal::Integer(a), Signal::Integer(b)) => a <= b,
+            (Signal::List(a), Signal::List(b)) => {
+                let a = a.borrow();
+                let b = b.borrow();
+                if a.len() < b.len() {
+                    return false;
+                }
+                a.iter()
+                    .zip(b.iter())
+                    .all(|(a, b)| a.is_in_order(b.as_ref()))
+            }
+            (Signal::List(_), Signal::Integer(b)) => {
+                let b = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*b))]));
+                self.is_in_order(&b)
+            }
+            (Signal::Integer(a), Signal::List(_)) => {
+                let a = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*a))]));
+                other.is_in_order(&a)
+            }
+        }
+    }
 }
 
 impl PacketPair {
@@ -68,6 +92,10 @@ impl PacketPair {
             left: Signal::new_list(left),
             right: Signal::new_list(right),
         }
+    }
+
+    pub fn is_in_order(&self) -> bool {
+        self.left.is_in_order(self.right.as_ref())
     }
 }
 
@@ -81,6 +109,17 @@ impl PacketPairs {
             .map(|(left, right)| PacketPair::new(left, right))
             .collect();
         Ok(packet_pairs)
+    }
+
+    pub fn count_pairs_in_order(&self) -> usize {
+        self.0
+            .iter()
+            .enumerate()
+            .filter(|(_, pair)| pair.is_in_order())
+            .map(|(index, _)| index + 1)
+            .for_each(|index| println!("Pair {} is in order", index));
+        // .sum()
+        0
     }
 }
 
@@ -122,7 +161,9 @@ mod tests {
 
     #[test]
     fn example_1() {
-        let _packet_pairs = PacketPairs::new("example.txt").unwrap();
+        let packet_pairs = PacketPairs::new("example.txt").unwrap();
+        let pairs_in_order = packet_pairs.count_pairs_in_order();
+        assert_eq!(pairs_in_order, 13);
     }
 
     #[test]
