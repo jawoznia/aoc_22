@@ -1,4 +1,5 @@
 use anyhow::Result;
+use itertools::Itertools;
 use std::{cell::RefCell, fs::read_to_string, rc::Rc};
 
 #[derive(Debug)]
@@ -9,26 +10,24 @@ pub enum Signal {
 
 #[derive(Debug)]
 pub struct PacketPair {
-    pub left: Vec<Signal>,
-    pub right: Vec<Signal>,
+    pub left: Rc<Signal>,
+    pub right: Rc<Signal>,
 }
 
 #[derive(Debug)]
 pub struct PacketPairs(Vec<PacketPair>);
 
-pub fn load(file: &str) -> Result<Rc<Signal>> {
-    // chars: '[' ']' ',' 'integer'
-    // '[' -> push new vec to stack
-    // ']' -> pop vec from stack somewhere
-    // integer -> add to vec on top of stack
-    // ',' -> ignore
-    // let mut stack = LinkedList::new();
-    let output = Rc::new(Signal::List(RefCell::new(vec![])));
-    let mut current_depth = 0;
-    let mut current_signal = output.clone();
+impl FromIterator<PacketPair> for PacketPairs {
+    fn from_iter<T: IntoIterator<Item = PacketPair>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
 
-    read_to_string(file)?.lines().for_each(|line| {
-        // let mut signal = Signal::List(vec![]);
+impl Signal {
+    pub fn new_list(line: &str) -> Rc<Self> {
+        let output = Rc::new(Signal::List(RefCell::new(vec![])));
+        let mut current_depth = 0;
+        let mut current_signal = output.clone();
         line.chars().for_each(|c| match c {
             '[' => match current_signal.clone().as_ref() {
                 Signal::List(vec) => {
@@ -58,9 +57,30 @@ pub fn load(file: &str) -> Result<Rc<Signal>> {
                     .push(Rc::new(Signal::Integer(c.to_digit(10).unwrap()))),
                 Signal::Integer(_) => panic!("Unexpected integer"),
             },
-        })
-    });
-    Ok(output)
+        });
+        output
+    }
+}
+
+impl PacketPair {
+    pub fn new(left: &str, right: &str) -> Self {
+        Self {
+            left: Signal::new_list(left),
+            right: Signal::new_list(right),
+        }
+    }
+}
+
+impl PacketPairs {
+    pub fn new(file: &str) -> Result<Self> {
+        let packet_pairs: Self = read_to_string(file)?
+            .lines()
+            .filter(|line| !line.is_empty())
+            .tuple_windows()
+            .map(|(left, right)| PacketPair::new(left, right))
+            .collect();
+        Ok(packet_pairs)
+    }
 }
 
 #[cfg(test)]
@@ -68,8 +88,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_load() {
-        let signal = load("example.txt").unwrap();
-        println!("{:#?}", signal);
+    fn example_1() {
+        let packet_pairs = PacketPairs::new("example.txt").unwrap();
+        println!("{:#?}", packet_pairs);
     }
 }
