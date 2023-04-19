@@ -2,19 +2,19 @@ use anyhow::Result;
 use itertools::Itertools;
 use std::{cell::RefCell, fs::read_to_string, rc::Rc};
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Signal {
     Integer(u32),
     List(RefCell<Vec<Rc<Signal>>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct PacketPair {
     pub left: Rc<Signal>,
     pub right: Rc<Signal>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct PacketPairs(Vec<PacketPair>);
 
 impl FromIterator<PacketPair> for PacketPairs {
@@ -28,7 +28,7 @@ impl Signal {
         let output = Rc::new(Signal::List(RefCell::new(vec![])));
         let mut current_depth = 0;
         let mut current_signal = output.clone();
-        line.chars().for_each(|c| match c {
+        line.chars().skip(1).for_each(|c| match c {
             '[' => match current_signal.clone().as_ref() {
                 Signal::List(vec) => {
                     vec.borrow_mut()
@@ -77,6 +77,7 @@ impl PacketPairs {
             .lines()
             .filter(|line| !line.is_empty())
             .tuple_windows()
+            .step_by(2)
             .map(|(left, right)| PacketPair::new(left, right))
             .collect();
         Ok(packet_pairs)
@@ -88,8 +89,44 @@ mod tests {
     use super::*;
 
     #[test]
-    fn example_1() {
+    fn packet_pairs_new() {
         let packet_pairs = PacketPairs::new("example.txt").unwrap();
-        println!("{:#?}", packet_pairs);
+        let first = packet_pairs.0[0].left.clone();
+        let expected_first = Rc::new(Signal::List(RefCell::new(vec![
+            Rc::new(Signal::Integer(1)),
+            Rc::new(Signal::Integer(1)),
+            Rc::new(Signal::Integer(3)),
+            Rc::new(Signal::Integer(1)),
+            Rc::new(Signal::Integer(1)),
+        ])));
+        assert_eq!(first, expected_first);
+
+        let fourth = packet_pairs.0[3].right.clone();
+        let expected_fourth = Rc::new(Signal::List(RefCell::new(vec![
+            Rc::new(Signal::List(RefCell::new(vec![
+                Rc::new(Signal::Integer(4)),
+                Rc::new(Signal::Integer(4)),
+            ]))),
+            Rc::new(Signal::Integer(4)),
+            Rc::new(Signal::Integer(4)),
+            Rc::new(Signal::Integer(4)),
+        ])));
+        assert_eq!(fourth, expected_fourth);
+
+        let seventh = packet_pairs.0[6].left.clone();
+        let expected_seventh = Rc::new(Signal::List(RefCell::new(vec![Rc::new(Signal::List(
+            RefCell::new(vec![Rc::new(Signal::List(RefCell::new(vec![])))]),
+        ))])));
+        assert_eq!(seventh, expected_seventh);
+    }
+
+    #[test]
+    fn example_1() {
+        let _packet_pairs = PacketPairs::new("example.txt").unwrap();
+    }
+
+    #[test]
+    fn input_1() {
+        let _packet_pairs = PacketPairs::new("input.txt").unwrap();
     }
 }
