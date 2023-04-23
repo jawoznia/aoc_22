@@ -71,38 +71,44 @@ impl Signal {
             (Signal::List(a), Signal::List(b)) => {
                 let a = a.borrow();
                 let b = b.borrow();
-                if a.len() > b.len() {
-                    // println!("a.len() < b.len()");
-                    // println!("{:#?} < {:#?}", a, b);
-                    return Some(false);
+
+                // println!("a: {:#?}, b: {:#?}", a, b);
+                let comparison = a
+                    .iter()
+                    .zip(b.iter())
+                    .map(|(a, b)| a.is_in_order(b.as_ref()))
+                    // .for_each(|x| println!("comparison: {:#?}", x));
+                    .skip_while(|x| x.is_none())
+                    .next()
+                    .unwrap_or(None);
+                // let comparison = None;
+
+                // println!("comparison: {:#?}", comparison);
+
+                match comparison {
+                    Some(_) => comparison,
+                    None => {
+                        if a.len() > b.len() {
+                            // println!("a.len() > b.len()");
+                            Some(false)
+                        } else if a.len() < b.len() {
+                            // println!("a.len() < b.len()");
+                            Some(true)
+                        } else {
+                            // println!("list None");
+                            None
+                        }
+                    }
                 }
-                Some(
-                    a.iter()
-                        .zip(b.iter())
-                        .filter_map(|(a, b)| a.is_in_order(b.as_ref()))
-                        .take(1)
-                        .all(|x| x),
-                )
             }
-            (Signal::List(a), Signal::Integer(_)) => {
-                // let b = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*b))]));
-                // self.is_in_order(&b)
-                if a.borrow().is_empty() {
-                    Some(true)
-                } else {
-                    let a = a.borrow().first().unwrap().clone();
-                    a.is_in_order(other)
-                }
+            (Signal::List(_), Signal::Integer(b)) => {
+                let b = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*b))]));
+                self.is_in_order(&b)
             }
-            (Signal::Integer(_), Signal::List(b)) => {
-                // let a = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*a))]));
-                // a.is_in_order(other)
-                if b.borrow().is_empty() {
-                    Some(false)
-                } else {
-                    let b = b.borrow().first().unwrap().clone();
-                    self.is_in_order(b.as_ref())
-                }
+            (Signal::Integer(a), Signal::List(_)) => {
+                // println!("self: {:#?}, other: {:#?}", self, other);
+                let a = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*a))]));
+                a.is_in_order(other)
             }
         }
     }
@@ -137,8 +143,17 @@ impl PacketPairs {
         self.0
             .iter()
             .enumerate()
-            .filter(|(_, pair)| pair.is_in_order().unwrap())
-            .map(|(index, _)| index + 1)
+            .filter_map(|(index, pair)| match pair.is_in_order() {
+                Some(is_in_order) => {
+                    if is_in_order {
+                        Some(index)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .map(|index| index + 1)
             // .for_each(|index| println!("Pair {} is in order", index));
             .sum()
         // 0
@@ -182,6 +197,38 @@ mod tests {
     }
 
     #[test]
+    fn signal_list_in_order() {
+        let left = Rc::new(Signal::List(RefCell::new(vec![
+            Rc::new(Signal::Integer(1)),
+            Rc::new(Signal::Integer(1)),
+            Rc::new(Signal::Integer(3)),
+            Rc::new(Signal::Integer(1)),
+            Rc::new(Signal::Integer(1)),
+        ])));
+        let right = Rc::new(Signal::List(RefCell::new(vec![
+            Rc::new(Signal::Integer(1)),
+            Rc::new(Signal::Integer(1)),
+            Rc::new(Signal::Integer(5)),
+            Rc::new(Signal::Integer(1)),
+            Rc::new(Signal::Integer(1)),
+        ])));
+        let pairs = PacketPairs {
+            0: vec![PacketPair { left, right }],
+        };
+
+        assert_eq!(pairs.count_pairs_in_order(), 1);
+    }
+
+    #[test]
+    fn third() {
+        let packet_pairs = PacketPairs::new("example.txt").unwrap();
+        let third = packet_pairs.0.into_iter().nth(2).unwrap();
+        let pairs = PacketPairs { 0: vec![third] };
+        let pairs_in_order = pairs.count_pairs_in_order();
+        assert_eq!(pairs_in_order, 0);
+    }
+
+    #[test]
     fn example_1() {
         let packet_pairs = PacketPairs::new("example.txt").unwrap();
         let pairs_in_order = packet_pairs.count_pairs_in_order();
@@ -192,7 +239,7 @@ mod tests {
     fn input_1() {
         let packet_pairs = PacketPairs::new("input.txt").unwrap();
         let pairs_in_order = packet_pairs.count_pairs_in_order();
-        assert_eq!(pairs_in_order, 2158);
+        assert_eq!(pairs_in_order, 5715);
     }
 
     #[test]
