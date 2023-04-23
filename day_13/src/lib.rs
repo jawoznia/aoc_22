@@ -61,26 +61,34 @@ impl Signal {
         output
     }
 
-    pub fn is_in_order(&self, other: &Self) -> bool {
+    pub fn is_in_order(&self, other: &Self) -> Option<bool> {
         match (self, other) {
-            (Signal::Integer(a), Signal::Integer(b)) => a <= b,
+            (Signal::Integer(a), Signal::Integer(b)) => match a.cmp(b) {
+                std::cmp::Ordering::Less => Some(true),
+                std::cmp::Ordering::Equal => None,
+                std::cmp::Ordering::Greater => Some(false),
+            },
             (Signal::List(a), Signal::List(b)) => {
                 let a = a.borrow();
                 let b = b.borrow();
                 if a.len() > b.len() {
                     // println!("a.len() < b.len()");
                     // println!("{:#?} < {:#?}", a, b);
-                    return false;
+                    return Some(false);
                 }
-                a.iter()
-                    .zip(b.iter())
-                    .all(|(a, b)| a.is_in_order(b.as_ref()))
+                Some(
+                    a.iter()
+                        .zip(b.iter())
+                        .filter_map(|(a, b)| a.is_in_order(b.as_ref()))
+                        .take(1)
+                        .all(|x| x),
+                )
             }
             (Signal::List(a), Signal::Integer(_)) => {
                 // let b = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*b))]));
                 // self.is_in_order(&b)
                 if a.borrow().is_empty() {
-                    true
+                    Some(true)
                 } else {
                     let a = a.borrow().first().unwrap().clone();
                     a.is_in_order(other)
@@ -90,7 +98,7 @@ impl Signal {
                 // let a = Signal::List(RefCell::new(vec![Rc::new(Signal::Integer(*a))]));
                 // a.is_in_order(other)
                 if b.borrow().is_empty() {
-                    false
+                    Some(false)
                 } else {
                     let b = b.borrow().first().unwrap().clone();
                     self.is_in_order(b.as_ref())
@@ -108,7 +116,7 @@ impl PacketPair {
         }
     }
 
-    pub fn is_in_order(&self) -> bool {
+    pub fn is_in_order(&self) -> Option<bool> {
         self.left.is_in_order(self.right.as_ref())
     }
 }
@@ -129,7 +137,7 @@ impl PacketPairs {
         self.0
             .iter()
             .enumerate()
-            .filter(|(_, pair)| pair.is_in_order())
+            .filter(|(_, pair)| pair.is_in_order().unwrap())
             .map(|(index, _)| index + 1)
             // .for_each(|index| println!("Pair {} is in order", index));
             .sum()
@@ -184,6 +192,35 @@ mod tests {
     fn input_1() {
         let packet_pairs = PacketPairs::new("input.txt").unwrap();
         let pairs_in_order = packet_pairs.count_pairs_in_order();
-        assert_eq!(pairs_in_order, 325);
+        assert_eq!(pairs_in_order, 2158);
+    }
+
+    #[test]
+    fn custom_input() {
+        let left = Rc::new(Signal::List(RefCell::new(vec![
+            Rc::new(Signal::List(RefCell::new(vec![
+                Rc::new(Signal::Integer(4)),
+                Rc::new(Signal::Integer(4)),
+            ]))),
+            Rc::new(Signal::List(RefCell::new(vec![
+                Rc::new(Signal::Integer(4)),
+                Rc::new(Signal::Integer(4)),
+            ]))),
+            Rc::new(Signal::Integer(9)),
+        ])));
+        let right = Rc::new(Signal::List(RefCell::new(vec![
+            Rc::new(Signal::List(RefCell::new(vec![
+                Rc::new(Signal::Integer(4)),
+                Rc::new(Signal::Integer(4)),
+            ]))),
+            Rc::new(Signal::List(RefCell::new(vec![
+                Rc::new(Signal::Integer(5)),
+                Rc::new(Signal::Integer(3)),
+            ]))),
+            Rc::new(Signal::Integer(2)),
+        ])));
+
+        let pair = PacketPairs(vec![PacketPair { left, right }]);
+        assert_eq!(pair.count_pairs_in_order(), 1);
     }
 }
