@@ -78,8 +78,9 @@ impl Signal {
                     .zip(b.iter())
                     .map(|(a, b)| a.is_in_order(b.as_ref()))
                     // .for_each(|x| println!("comparison: {:#?}", x));
-                    .skip_while(|x| x.is_none())
-                    .next()
+                    .find(|x| x.is_some())
+                    // .skip_while(|x| x.is_none())
+                    // .next()
                     .unwrap_or(None);
                 // let comparison = None;
 
@@ -87,18 +88,11 @@ impl Signal {
 
                 match comparison {
                     Some(_) => comparison,
-                    None => {
-                        if a.len() > b.len() {
-                            // println!("a.len() > b.len()");
-                            Some(false)
-                        } else if a.len() < b.len() {
-                            // println!("a.len() < b.len()");
-                            Some(true)
-                        } else {
-                            // println!("list None");
-                            None
-                        }
-                    }
+                    None => match a.len().cmp(&b.len()) {
+                        std::cmp::Ordering::Less => Some(true),
+                        std::cmp::Ordering::Equal => None,
+                        std::cmp::Ordering::Greater => Some(false),
+                    },
                 }
             }
             (Signal::List(_), Signal::Integer(b)) => {
@@ -122,8 +116,8 @@ impl PacketPair {
         }
     }
 
-    pub fn is_in_order(&self) -> Option<bool> {
-        self.left.is_in_order(self.right.as_ref())
+    pub fn is_in_order(&self) -> bool {
+        self.left.is_in_order(self.right.as_ref()).unwrap_or(false)
     }
 }
 
@@ -143,17 +137,8 @@ impl PacketPairs {
         self.0
             .iter()
             .enumerate()
-            .filter_map(|(index, pair)| match pair.is_in_order() {
-                Some(is_in_order) => {
-                    if is_in_order {
-                        Some(index)
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            })
-            .map(|index| index + 1)
+            .filter(|(_, pair)| pair.is_in_order())
+            .map(|(index, _)| index + 1)
             // .for_each(|index| println!("Pair {} is in order", index));
             .sum()
         // 0
@@ -212,9 +197,7 @@ mod tests {
             Rc::new(Signal::Integer(1)),
             Rc::new(Signal::Integer(1)),
         ])));
-        let pairs = PacketPairs {
-            0: vec![PacketPair { left, right }],
-        };
+        let pairs = PacketPairs(vec![PacketPair { left, right }]);
 
         assert_eq!(pairs.count_pairs_in_order(), 1);
     }
@@ -223,7 +206,7 @@ mod tests {
     fn third() {
         let packet_pairs = PacketPairs::new("example.txt").unwrap();
         let third = packet_pairs.0.into_iter().nth(2).unwrap();
-        let pairs = PacketPairs { 0: vec![third] };
+        let pairs = PacketPairs(vec![third]);
         let pairs_in_order = pairs.count_pairs_in_order();
         assert_eq!(pairs_in_order, 0);
     }
