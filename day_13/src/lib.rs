@@ -1,6 +1,9 @@
 use anyhow::Result;
 use itertools::Itertools;
-use std::{cell::RefCell, fs::read_to_string, rc::Rc};
+use std::cell::RefCell;
+use std::cmp::Ordering;
+use std::fs::read_to_string;
+use std::rc::Rc;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Signal {
@@ -28,7 +31,7 @@ impl Signal {
         let output = Rc::new(Signal::List(RefCell::new(vec![])));
         let mut current_depth = 0;
         let mut current_signal = output.clone();
-        line.chars().skip(1).for_each(|c| match c {
+        line[1..line.len() - 1].chars().for_each(|c| match c {
             '[' => match current_signal.clone().as_ref() {
                 Signal::List(vec) => {
                     vec.borrow_mut()
@@ -64,9 +67,9 @@ impl Signal {
     pub fn is_in_order(&self, other: &Self) -> Option<bool> {
         match (self, other) {
             (Signal::Integer(a), Signal::Integer(b)) => match a.cmp(b) {
-                std::cmp::Ordering::Less => Some(true),
-                std::cmp::Ordering::Equal => None,
-                std::cmp::Ordering::Greater => Some(false),
+                Ordering::Less => Some(true),
+                Ordering::Equal => None,
+                Ordering::Greater => Some(false),
             },
             (Signal::List(a), Signal::List(b)) => {
                 let a = a.borrow();
@@ -89,9 +92,9 @@ impl Signal {
                 match comparison {
                     Some(_) => comparison,
                     None => match a.len().cmp(&b.len()) {
-                        std::cmp::Ordering::Less => Some(true),
-                        std::cmp::Ordering::Equal => None,
-                        std::cmp::Ordering::Greater => Some(false),
+                        Ordering::Less => Some(true),
+                        Ordering::Equal => None,
+                        Ordering::Greater => Some(false),
                     },
                 }
             }
